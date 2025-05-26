@@ -1,0 +1,41 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\Github Local Code Space\\CustomVideoDownloader\\VD_MasterVS\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{4EE345E6-2381-4C4B-81F4-69C238BE9901}|VD_MasterVS.vcxproj|D:\\Github Local Code Space\\CustomVideoDownloader\\VD_MasterVS\\VD_MasterVS.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{4EE345E6-2381-4C4B-81F4-69C238BE9901}|VD_MasterVS.vcxproj|solutionrelative:VD_MasterVS.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "VD_MasterVS.cpp",
+              "DocumentMoniker": "D:\\Github Local Code Space\\CustomVideoDownloader\\VD_MasterVS\\VD_MasterVS.cpp",
+              "RelativeDocumentMoniker": "VD_MasterVS.cpp",
+              "ToolTip": "D:\\Github Local Code Space\\CustomVideoDownloader\\VD_MasterVS\\VD_MasterVS.cpp",
+              "RelativeToolTip": "VD_MasterVS.cpp",
+              "ViewState": "AgIAAFoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-05-26T05:28:08.077Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
