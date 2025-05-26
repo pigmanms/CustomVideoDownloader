@@ -56,27 +56,27 @@ public class VDMasterUI extends JFrame {
 
     private void layoutComponents() {
         JPanel topPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        GridBagConstraints gbcMain = new GridBagConstraints();
+        gbcMain.insets = new Insets(5, 5, 5, 5);
+        gbcMain.fill = GridBagConstraints.HORIZONTAL;
 
-        gbc.gridx = 0; gbc.gridy = 0;
-        topPanel.add(new JLabel("Video URL:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1;
-        topPanel.add(urlField, gbc);
+        gbcMain.gridx = 0; gbcMain.gridy = 0;
+        topPanel.add(new JLabel("Video URL:"), gbcMain);
+        gbcMain.gridx = 1; gbcMain.weightx = 1;
+        topPanel.add(urlField, gbcMain);
 
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
-        topPanel.add(new JLabel("Save Directory:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1;
-        topPanel.add(directoryField, gbc);
-        gbc.gridx = 2; gbc.weightx = 0;
-        topPanel.add(browseButton, gbc);
+        gbcMain.gridx = 0; gbcMain.gridy = 1; gbcMain.weightx = 0;
+        topPanel.add(new JLabel("Save Directory:"), gbcMain);
+        gbcMain.gridx = 1; gbcMain.weightx = 1;
+        topPanel.add(directoryField, gbcMain);
+        gbcMain.gridx = 2; gbcMain.weightx = 0;
+        topPanel.add(browseButton, gbcMain);
 
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 3;
+        gbcMain.gridx = 0; gbcMain.gridy = 2; gbcMain.gridwidth = 3;
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(startButton);
         buttonPanel.add(stopButton);
-        topPanel.add(buttonPanel, gbc);
+        topPanel.add(buttonPanel, gbcMain);
 
         add(topPanel, BorderLayout.NORTH);
         add(new JScrollPane(logArea), BorderLayout.CENTER);
