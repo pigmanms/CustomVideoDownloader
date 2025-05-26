@@ -6,7 +6,11 @@ import java.awt.event.ItemEvent;
 import java.io.*;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class VDMasterUI extends JFrame {
     private JTextField urlField;
@@ -16,13 +20,14 @@ public class VDMasterUI extends JFrame {
     private JButton stopButton;
     private JTextArea logArea;
     private Process downloadProcess;
+    private final List<Process> conversionProcesses = Collections.synchronizedList(new ArrayList<>());
+    private final ExecutorService conversionExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
     // Conversion UI
     private JCheckBox needConversionCheck;
     private JRadioButton toM4aRadio;
     private JRadioButton toMp3Radio;
     private JRadioButton toWavRadio;
-    private ButtonGroup conversionGroup;
     private JTextField conversionDirField;
     private JButton conversionBrowseButton;
     private JPanel conversionPanel;
@@ -35,6 +40,21 @@ public class VDMasterUI extends JFrame {
 
         initComponents();
         layoutComponents();
+        setupShutdownHook();
+    }
+
+    private void setupShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (downloadProcess != null && downloadProcess.isAlive()) {
+                downloadProcess.destroyForcibly();
+            }
+            synchronized (conversionProcesses) {
+                for (Process p : conversionProcesses) {
+                    if (p.isAlive()) p.destroyForcibly();
+                }
+            }
+            conversionExecutor.shutdownNow();
+        }));
     }
 
     private void initComponents() {
@@ -57,7 +77,7 @@ public class VDMasterUI extends JFrame {
         toM4aRadio = new JRadioButton("Convert all to m4a");
         toMp3Radio = new JRadioButton("Convert all to mp3");
         toWavRadio = new JRadioButton("Convert all to wav");
-        conversionGroup = new ButtonGroup();
+        ButtonGroup conversionGroup = new ButtonGroup();
         conversionGroup.add(toM4aRadio);
         conversionGroup.add(toMp3Radio);
         conversionGroup.add(toWavRadio);
@@ -217,31 +237,56 @@ public class VDMasterUI extends JFrame {
         File folder = new File(srcDir);
         File[] files = folder.listFiles((d, name) -> name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".webm"));
         if (files == null) return;
+
         for (File f : files) {
-            String base = f.getName().substring(0, f.getName().lastIndexOf('.'));
-            List<String> cmd = new ArrayList<>();
-            cmd.add("ffmpeg");
-            cmd.add("-i");
-            cmd.add(f.getAbsolutePath());
-            cmd.add(destDir + File.separator + base + "." + ext);
-            try {
-                Process p = new ProcessBuilder(cmd).inheritIO().start();
-                p.waitFor();
-                appendLog("Converted " + base + "." + ext + "\n");
-            } catch (Exception ex) {
-                appendLog("Conversion error: " + ex.getMessage() + "\n");
+            conversionExecutor.submit(() -> {
+                String base = f.getName().substring(0, f.getName().lastIndexOf('.'));
+                List<String> cmd = new ArrayList<>();
+                cmd.add("ffmpeg");
+                cmd.add("-threads");
+                cmd.add(String.valueOf(Runtime.getRuntime().availableProcessors()));
+                cmd.add("-i");
+                cmd.add(f.getAbsolutePath());
+                cmd.add(destDir + File.separator + base + "." + ext);
+                try {
+                    Process p = new ProcessBuilder(cmd).inheritIO().start();
+                    synchronized (conversionProcesses) {
+                        conversionProcesses.add(p);
+                    }
+                    p.waitFor();
+                    appendLog("Converted " + base + "." + ext + "\n");
+                } catch (Exception ex) {
+                    appendLog("Conversion error: " + ex.getMessage() + "\n");
+                }
+            });
+        }
+        conversionExecutor.shutdown();
+        try {
+            if (!conversionExecutor.awaitTermination(1, TimeUnit.HOURS)) {
+                conversionExecutor.shutdownNow();
             }
+        } catch (InterruptedException ie) {
+            conversionExecutor.shutdownNow();
+            Thread.currentThread().interrupt();
         }
         appendLog("All conversions done.\n");
     }
 
     private void onStop(ActionEvent e) {
         if (downloadProcess != null && downloadProcess.isAlive()) {
-            downloadProcess.destroy();
-            appendLog("Process stopped.\n");
+            downloadProcess.destroyForcibly();
+            appendLog("Download process stopped.\n");
         } else {
-            appendLog("No active process.\n");
+            appendLog("No active download.\n");
         }
+        synchronized (conversionProcesses) {
+            for (Process p : conversionProcesses) {
+                if (p.isAlive()) {
+                    p.destroyForcibly();
+                }
+            }
+        }
+        conversionExecutor.shutdownNow();
     }
 
     private void appendLog(String text) {
