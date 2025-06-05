@@ -1,10 +1,8 @@
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.io.*;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -33,7 +31,7 @@ public class VDMasterUI extends JFrame {
     private JPanel conversionPanel;
 
     public VDMasterUI() {
-        setTitle("VD Build_1.1(Master)");
+        setTitle("VD Build_1.2(Development)");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 650);
         setLocationRelativeTo(null);
@@ -93,49 +91,49 @@ public class VDMasterUI extends JFrame {
 
     private void layoutComponents() {
         JPanel topPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        GridBagConstraints gbcMaster = new GridBagConstraints();
+        gbcMaster.insets = new Insets(5, 5, 5, 5);
+        gbcMaster.fill = GridBagConstraints.HORIZONTAL;
 
-        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
-        topPanel.add(new JLabel("Video URL:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1;
-        topPanel.add(urlField, gbc);
+        gbcMaster.gridx = 0; gbcMaster.gridy = 0; gbcMaster.weightx = 0;
+        topPanel.add(new JLabel("Video URL:"), gbcMaster);
+        gbcMaster.gridx = 1; gbcMaster.weightx = 1;
+        topPanel.add(urlField, gbcMaster);
 
-        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
-        topPanel.add(new JLabel("Save Directory:"), gbc);
-        gbc.gridx = 1; gbc.weightx = 1;
-        topPanel.add(directoryField, gbc);
-        gbc.gridx = 2; gbc.weightx = 0;
-        topPanel.add(browseButton, gbc);
+        gbcMaster.gridx = 0; gbcMaster.gridy = 1; gbcMaster.weightx = 0;
+        topPanel.add(new JLabel("Save Directory:"), gbcMaster);
+        gbcMaster.gridx = 1; gbcMaster.weightx = 1;
+        topPanel.add(directoryField, gbcMaster);
+        gbcMaster.gridx = 2; gbcMaster.weightx = 0;
+        topPanel.add(browseButton, gbcMaster);
 
-        gbc.gridx = 0; gbc.gridy = 2; gbc.gridwidth = 3;
-        topPanel.add(needConversionCheck, gbc);
+        gbcMaster.gridx = 0; gbcMaster.gridy = 2; gbcMaster.gridwidth = 3;
+        topPanel.add(needConversionCheck, gbcMaster);
 
-        GridBagConstraints cgbc = new GridBagConstraints();
-        cgbc.insets = new Insets(3, 3, 3, 3);
-        cgbc.fill = GridBagConstraints.HORIZONTAL;
-        cgbc.gridx = 0; cgbc.gridy = 0; cgbc.gridwidth = 3;
-        conversionPanel.add(toM4aRadio, cgbc);
-        cgbc.gridy = 1;
-        conversionPanel.add(toMp3Radio, cgbc);
-        cgbc.gridy = 2;
-        conversionPanel.add(toWavRadio, cgbc);
-        cgbc.gridy = 3; cgbc.gridwidth = 1; cgbc.gridx = 0;
-        conversionPanel.add(new JLabel("Save converted files at:"), cgbc);
-        cgbc.gridx = 1; cgbc.weightx = 1;
-        conversionPanel.add(conversionDirField, cgbc);
-        cgbc.gridx = 2; cgbc.weightx = 0;
-        conversionPanel.add(conversionBrowseButton, cgbc);
+        GridBagConstraints gbcSaveConvertedFilesAt = new GridBagConstraints();
+        gbcSaveConvertedFilesAt.insets = new Insets(3, 3, 3, 3);
+        gbcSaveConvertedFilesAt.fill = GridBagConstraints.HORIZONTAL;
+        gbcSaveConvertedFilesAt.gridx = 0; gbcSaveConvertedFilesAt.gridy = 0; gbcSaveConvertedFilesAt.gridwidth = 3;
+        conversionPanel.add(toM4aRadio, gbcSaveConvertedFilesAt);
+        gbcSaveConvertedFilesAt.gridy = 1;
+        conversionPanel.add(toMp3Radio, gbcSaveConvertedFilesAt);
+        gbcSaveConvertedFilesAt.gridy = 2;
+        conversionPanel.add(toWavRadio, gbcSaveConvertedFilesAt);
+        gbcSaveConvertedFilesAt.gridy = 3; gbcSaveConvertedFilesAt.gridwidth = 1; gbcSaveConvertedFilesAt.gridx = 0;
+        conversionPanel.add(new JLabel("Save converted files at:"), gbcSaveConvertedFilesAt);
+        gbcSaveConvertedFilesAt.gridx = 1; gbcSaveConvertedFilesAt.weightx = 1;
+        conversionPanel.add(conversionDirField, gbcSaveConvertedFilesAt);
+        gbcSaveConvertedFilesAt.gridx = 2; gbcSaveConvertedFilesAt.weightx = 0;
+        conversionPanel.add(conversionBrowseButton, gbcSaveConvertedFilesAt);
 
-        gbc.gridy = 3; gbc.gridwidth = 3;
-        topPanel.add(conversionPanel, gbc);
+        gbcMaster.gridy = 3; gbcMaster.gridwidth = 3;
+        topPanel.add(conversionPanel, gbcMaster);
 
-        gbc.gridy = 4; gbc.gridwidth = 3;
+        gbcMaster.gridy = 4; gbcMaster.gridwidth = 3;
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(startButton);
         buttonPanel.add(stopButton);
-        topPanel.add(buttonPanel, gbc);
+        topPanel.add(buttonPanel, gbcMaster);
 
         add(topPanel, BorderLayout.NORTH);
         add(new JScrollPane(logArea), BorderLayout.CENTER);
@@ -166,7 +164,7 @@ public class VDMasterUI extends JFrame {
 
     private void onStart(ActionEvent e) {
         if (downloadProcess != null && downloadProcess.isAlive()) {
-            appendLog("Process already running...\n");
+            appendLog("[INFO] Process already running...\n");
             return;
         }
 
@@ -203,12 +201,12 @@ public class VDMasterUI extends JFrame {
             ext = null;
         }
 
-        ProcessBuilder builder = new ProcessBuilder(command);
-        builder.redirectErrorStream(true);
+        ProcessBuilder builderMasterProcess = new ProcessBuilder(command);
+        builderMasterProcess.redirectErrorStream(true);
 
         try {
-            downloadProcess = builder.start();
-            appendLog("Starting download...\n");
+            downloadProcess = builderMasterProcess.start();
+            appendLog("[INFO] Starting download...\n");
 
             new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(
@@ -217,23 +215,23 @@ public class VDMasterUI extends JFrame {
                     while ((line = reader.readLine()) != null) {
                         appendLog(line + "\n");
                     }
-                    appendLog("Download finished.\n");
+                    appendLog("[INFO] Download finished.\n");
 
                     if (doConvert) {
                         convertFiles(dir, ext, convDir);
                     }
                 } catch (IOException ex) {
-                    appendLog("Error: " + ex.getMessage() + "\n");
+                    appendLog("[ERROR] General error: " + ex.getMessage() + "\n");
                 }
             }).start();
 
         } catch (IOException ex) {
-            appendLog("Failed to start: " + ex.getMessage() + "\n");
+            appendLog("[ERROR] Failed to start: " + ex.getMessage() + "\n");
         }
     }
 
     private void convertFiles(String srcDir, String ext, String destDir) {
-        appendLog("Starting conversion to " + ext + "...\n");
+        appendLog("[INFO] Starting conversion to " + ext + "...\n");
         File folder = new File(srcDir);
         File[] files = folder.listFiles((d, name) -> name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".webm"));
         if (files == null) return;
@@ -269,15 +267,15 @@ public class VDMasterUI extends JFrame {
             conversionExecutor.shutdownNow();
             Thread.currentThread().interrupt();
         }
-        appendLog("All conversions done.\n");
+        appendLog("[INFO] All conversions done.\n");
     }
 
     private void onStop(ActionEvent e) {
         if (downloadProcess != null && downloadProcess.isAlive()) {
             downloadProcess.destroyForcibly();
-            appendLog("Download process stopped.\n");
+            appendLog("[INFO] Download process stopped.\n");
         } else {
-            appendLog("No active download.\n");
+            appendLog("[INFO] No active download.\n");
         }
         synchronized (conversionProcesses) {
             for (Process p : conversionProcesses) {
