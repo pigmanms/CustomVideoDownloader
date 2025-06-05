@@ -31,7 +31,7 @@ public class VDMasterUI extends JFrame {
     private JPanel conversionPanel;
 
     public VDMasterUI() {
-        setTitle("VD Build_1.2(Development)");
+        setTitle("VD Build_1.2 (Release)");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(800, 650);
         setLocationRelativeTo(null);
