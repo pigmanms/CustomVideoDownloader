@@ -4,9 +4,10 @@ Customize your video download experience, This program provides fucking efficien
 ## Features
 - Download youtube videos
 - Download the whole channel or large playlists
+- Download some other websites' videos(just paste URL)
 - Automatically or Manually convert video to audio files
 - Customizable command line commands via user interface
-- and other KOOL stuff in the future...
+- and other kool stuff in the future...
 
 
 ----------------
