@@ -19,7 +19,7 @@ public class VDMasterUI extends JFrame {
     private JTextArea logArea;
     private Process downloadProcess;
     private final List<Process> conversionProcesses = Collections.synchronizedList(new ArrayList<>());
-    private final ExecutorService conversionExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    private ExecutorService conversionExecutor = null; // lazily created per batch
 
     // Conversion UI
     private JCheckBox needConversionCheck;
@@ -30,15 +30,30 @@ public class VDMasterUI extends JFrame {
     private JButton conversionBrowseButton;
     private JPanel conversionPanel;
 
+    // Quality UI
+    private JComboBox<String> qualityCombo;
+    private static final String[] QUALITY_OPTIONS = {"Best quality", "8K", "4K", "1080p", "720p"};
+
     public VDMasterUI() {
-        setTitle("VD Build_1.2 (Release)");
+        setTitle("VD Build_1.3 (Release)");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(800, 650);
+        setSize(860, 700);
         setLocationRelativeTo(null);
 
+        applyWindowsLookAndFeel();
         initComponents();
         layoutComponents();
         setupShutdownHook();
+    }
+
+    private void applyWindowsLookAndFeel() {
+        try {
+            // Prefer the OS look and feel (Windows on Win11)
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            SwingUtilities.updateComponentTreeUI(this);
+        } catch (Exception ignored) {
+            // Fallback silently – UI will still work with default L&F
+        }
     }
 
     private void setupShutdownHook() {
@@ -51,7 +66,7 @@ public class VDMasterUI extends JFrame {
                     if (p.isAlive()) p.destroyForcibly();
                 }
             }
-            conversionExecutor.shutdownNow();
+            if (conversionExecutor != null) conversionExecutor.shutdownNow();
         }));
     }
 
@@ -67,6 +82,10 @@ public class VDMasterUI extends JFrame {
         browseButton.addActionListener(this::onBrowse);
         startButton.addActionListener(this::onStart);
         stopButton.addActionListener(this::onStop);
+
+        // Quality components (default to 1080p; 60fps preferred inside format rules)
+        qualityCombo = new JComboBox<>(QUALITY_OPTIONS);
+        qualityCombo.setSelectedItem("1080p");
 
         // Conversion components
         needConversionCheck = new JCheckBox("Need Conversion?");
@@ -107,7 +126,13 @@ public class VDMasterUI extends JFrame {
         gbcMaster.gridx = 2; gbcMaster.weightx = 0;
         topPanel.add(browseButton, gbcMaster);
 
-        gbcMaster.gridx = 0; gbcMaster.gridy = 2; gbcMaster.gridwidth = 3;
+        // Quality selector row
+        gbcMaster.gridx = 0; gbcMaster.gridy = 2; gbcMaster.weightx = 0;
+        topPanel.add(new JLabel("Quality(Prioritizing 60FPS):"), gbcMaster);
+        gbcMaster.gridx = 1; gbcMaster.weightx = 1;
+        topPanel.add(qualityCombo, gbcMaster);
+
+        gbcMaster.gridx = 0; gbcMaster.gridy = 3; gbcMaster.gridwidth = 3;
         topPanel.add(needConversionCheck, gbcMaster);
 
         GridBagConstraints gbcSaveConvertedFilesAt = new GridBagConstraints();
@@ -126,10 +151,10 @@ public class VDMasterUI extends JFrame {
         gbcSaveConvertedFilesAt.gridx = 2; gbcSaveConvertedFilesAt.weightx = 0;
         conversionPanel.add(conversionBrowseButton, gbcSaveConvertedFilesAt);
 
-        gbcMaster.gridy = 3; gbcMaster.gridwidth = 3;
+        gbcMaster.gridy = 4; gbcMaster.gridwidth = 3;
         topPanel.add(conversionPanel, gbcMaster);
 
-        gbcMaster.gridy = 4; gbcMaster.gridwidth = 3;
+        gbcMaster.gridy = 5; gbcMaster.gridwidth = 3;
         JPanel buttonPanel = new JPanel();
         buttonPanel.add(startButton);
         buttonPanel.add(stopButton);
@@ -179,27 +204,29 @@ public class VDMasterUI extends JFrame {
         command.add("yt-dlp");
         command.add("-o");
         command.add(dir + File.separator + "%(title)s.%(ext)s");
-        command.add(url);
 
-        boolean doConvert = needConversionCheck.isSelected();
-        String ext;
-        String convDir;
-        if (doConvert) {
-            if (toM4aRadio.isSelected()) ext = "m4a";
-            else if (toMp3Radio.isSelected()) ext = "mp3";
-            else if (toWavRadio.isSelected()) ext = "wav";
-            else {
-                ext = null;
-            }
-            convDir = conversionDirField.getText().trim();
-            if (ext == null || convDir.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Select conversion format and directory.", "Error", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-        } else {
-            convDir = null;
-            ext = null;
+        // Always merge to mp4 when possible – tends to work better on Windows players
+        command.add("--merge-output-format");
+        command.add("mp4");
+
+        // Prefer 60fps when available, targeting resolution from combo
+        String selectedQuality = (String) qualityCombo.getSelectedItem();
+        String formatSelector = buildFormatSelector(selectedQuality);
+        if (formatSelector != null && !formatSelector.isEmpty()) {
+            command.add("-f");
+            command.add(formatSelector);
         }
+
+        // Workaround: Bilibili sometimes benefits from explicit remux and retries
+        if (url.contains("bilibili.com")) {
+            command.add("--retries");
+            command.add("5");
+            command.add("--fragment-retries");
+            command.add("5");
+            // Note: higher qualities on Bilibili may require login (cookies). Not enforced here.
+        }
+
+        command.add(url);
 
         ProcessBuilder builderMasterProcess = new ProcessBuilder(command);
         builderMasterProcess.redirectErrorStream(true);
@@ -207,6 +234,7 @@ public class VDMasterUI extends JFrame {
         try {
             downloadProcess = builderMasterProcess.start();
             appendLog("[INFO] Starting download...\n");
+            appendLog("[CMD] " + String.join(" ", command) + "\n");
 
             new Thread(() -> {
                 try (BufferedReader reader = new BufferedReader(
@@ -217,16 +245,57 @@ public class VDMasterUI extends JFrame {
                     }
                     appendLog("[INFO] Download finished.\n");
 
+                    boolean doConvert = needConversionCheck.isSelected();
                     if (doConvert) {
-                        convertFiles(dir, ext, convDir);
+                        String ext;
+                        if (toM4aRadio.isSelected()) ext = "m4a";
+                        else if (toMp3Radio.isSelected()) ext = "mp3";
+                        else if (toWavRadio.isSelected()) ext = "wav";
+                        else ext = null;
+
+                        String convDir = conversionDirField.getText().trim();
+                        if (ext == null || convDir.isEmpty()) {
+                            appendLog("[ERROR] Conversion requested but format/dir not set.\n");
+                        } else {
+                            convertFiles(dir, ext, convDir);
+                        }
                     }
                 } catch (IOException ex) {
                     appendLog("[ERROR] General error: " + ex.getMessage() + "\n");
                 }
-            }).start();
+            }, "ydlp-reader").start();
 
         } catch (IOException ex) {
             appendLog("[ERROR] Failed to start: " + ex.getMessage() + "\n");
+        }
+    }
+
+    /**
+     * Build a yt-dlp format selector string favoring 60fps when available.
+     * Uses fallback chains so that if the exact resolution+60fps is unavailable,
+     * we still get the closest available variant.
+     */
+    private String buildFormatSelector(String quality) {
+        // Helper templates: prefer video-only + best audio, else fall back to single muxed best
+        // 60fps preference is expressed with fps>=?60 (the ? makes it a soft condition).
+        switch (quality) {
+            case "Best quality":
+                // Any site: best video preferring 60fps, plus best audio
+                return "bv*[fps>=?60]+ba/bv*+ba/best";
+            case "8K": // 4320p
+                return "bv*[height=4320][fps>=?60]+ba/bv*[height=4320]+ba/b[height=4320]/" +
+                        "bv*[height<=4320][fps>=?60]+ba";
+            case "4K": // 2160p
+                return "bv*[height=2160][fps>=?60]+ba/bv*[height=2160]+ba/b[height=2160]/" +
+                        "bv*[height<=2160][fps>=?60]+ba";
+            case "1080p":
+                return "bv*[height=1080][fps>=?60]+ba/bv*[height=1080]+ba/b[height=1080]/" +
+                        "bv*[height<=1080][fps>=?60]+ba";
+            case "720p":
+                return "bv*[height=720][fps>=?60]+ba/bv*[height=720]+ba/b[height=720]/" +
+                        "bv*[height<=720][fps>=?60]+ba";
+            default:
+                return "best";
         }
     }
 
@@ -234,40 +303,63 @@ public class VDMasterUI extends JFrame {
         appendLog("[INFO] Starting conversion to " + ext + "...\n");
         File folder = new File(srcDir);
         File[] files = folder.listFiles((d, name) -> name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".webm"));
-        if (files == null) return;
+        if (files == null || files.length == 0) {
+            appendLog("[INFO] No files to convert in: " + srcDir + "\n");
+            return;
+        }
+
+        // Create a fresh executor per conversion batch
+        conversionExecutor = Executors.newFixedThreadPool(Math.max(1, Runtime.getRuntime().availableProcessors()));
 
         for (File f : files) {
             conversionExecutor.submit(() -> {
                 String base = f.getName().substring(0, f.getName().lastIndexOf('.'));
                 List<String> cmd = new ArrayList<>();
                 cmd.add("ffmpeg");
+                cmd.add("-y");
                 cmd.add("-threads");
                 cmd.add(String.valueOf(Runtime.getRuntime().availableProcessors()));
                 cmd.add("-i");
                 cmd.add(f.getAbsolutePath());
-                cmd.add(destDir + File.separator + base + "." + ext);
+                // Audio-only extraction if target is audio container; keep it simple and fast
+                if (ext.equalsIgnoreCase("m4a") || ext.equalsIgnoreCase("mp3") || ext.equalsIgnoreCase("wav")) {
+                    cmd.add("-vn"); // drop video
+                }
+                cmd.add(new File(destDir, base + "." + ext).getAbsolutePath());
                 try {
-                    Process p = new ProcessBuilder(cmd).inheritIO().start();
+                    Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
                     synchronized (conversionProcesses) {
                         conversionProcesses.add(p);
                     }
-                    p.waitFor();
-                    appendLog("Converted " + base + "." + ext + "\n");
+                    try (BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+                        String line;
+                        while ((line = r.readLine()) != null) {
+                            if (line.contains("time=")) { // lightweight progress hint
+                                appendLog("[FFMPEG] " + line + "\n");
+                            }
+                        }
+                    }
+                    int code = p.waitFor();
+                    if (code == 0) appendLog("Converted " + base + "." + ext + "\n");
+                    else appendLog("Conversion non-zero exit for " + base + "." + ext + " (code=" + code + ")\n");
                 } catch (Exception ex) {
                     appendLog("Conversion error: " + ex.getMessage() + "\n");
                 }
             });
         }
+
         conversionExecutor.shutdown();
-        try {
-            if (!conversionExecutor.awaitTermination(1, TimeUnit.HOURS)) {
+        new Thread(() -> {
+            try {
+                if (!conversionExecutor.awaitTermination(1, TimeUnit.HOURS)) {
+                    conversionExecutor.shutdownNow();
+                }
+            } catch (InterruptedException ie) {
                 conversionExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
             }
-        } catch (InterruptedException ie) {
-            conversionExecutor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-        appendLog("[INFO] All conversions done.\n");
+            appendLog("[INFO] All conversions done.\n");
+        }, "conv-waiter").start();
     }
 
     private void onStop(ActionEvent e) {
@@ -284,14 +376,23 @@ public class VDMasterUI extends JFrame {
                 }
             }
         }
-        conversionExecutor.shutdownNow();
+        if (conversionExecutor != null) conversionExecutor.shutdownNow();
     }
 
     private void appendLog(String text) {
-        SwingUtilities.invokeLater(() -> logArea.append(text));
+        SwingUtilities.invokeLater(() -> {
+            logArea.append(text);
+            // auto-scroll to bottom
+            logArea.setCaretPosition(logArea.getDocument().getLength());
+        });
     }
 
     public static void main(String[] args) {
+        // Apply Windows theme even before creating UI (best chance for native look)
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) {}
+
         SwingUtilities.invokeLater(() -> new VDMasterUI().setVisible(true));
     }
 }
