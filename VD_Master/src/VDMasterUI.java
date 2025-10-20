@@ -6,6 +6,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -211,7 +212,7 @@ public class VDMasterUI extends JFrame {
 
         // Prefer 60fps when available, targeting resolution from combo
         String selectedQuality = (String) qualityCombo.getSelectedItem();
-        String formatSelector = buildFormatSelector(selectedQuality);
+        String formatSelector = buildFormatSelector(Objects.requireNonNull(selectedQuality));
         if (formatSelector != null && !formatSelector.isEmpty()) {
             command.add("-f");
             command.add(formatSelector);
@@ -278,25 +279,22 @@ public class VDMasterUI extends JFrame {
     private String buildFormatSelector(String quality) {
         // Helper templates: prefer video-only + best audio, else fall back to single muxed best
         // 60fps preference is expressed with fps>=?60 (the ? makes it a soft condition).
-        switch (quality) {
-            case "Best quality":
+        return switch (quality) {
+            case "Best quality" ->
                 // Any site: best video preferring 60fps, plus best audio
-                return "bv*[fps>=?60]+ba/bv*+ba/best";
-            case "8K": // 4320p
-                return "bv*[height=4320][fps>=?60]+ba/bv*[height=4320]+ba/b[height=4320]/" +
-                        "bv*[height<=4320][fps>=?60]+ba";
-            case "4K": // 2160p
-                return "bv*[height=2160][fps>=?60]+ba/bv*[height=2160]+ba/b[height=2160]/" +
-                        "bv*[height<=2160][fps>=?60]+ba";
-            case "1080p":
-                return "bv*[height=1080][fps>=?60]+ba/bv*[height=1080]+ba/b[height=1080]/" +
-                        "bv*[height<=1080][fps>=?60]+ba";
-            case "720p":
-                return "bv*[height=720][fps>=?60]+ba/bv*[height=720]+ba/b[height=720]/" +
-                        "bv*[height<=720][fps>=?60]+ba";
-            default:
-                return "best";
-        }
+                    "bv*[fps>=?60]+ba/bv*+ba/best";
+            case "8K" -> // 4320p
+                    "bv*[height=4320][fps>=?60]+ba/bv*[height=4320]+ba/b[height=4320]/" +
+                            "bv*[height<=4320][fps>=?60]+ba";
+            case "4K" -> // 2160p
+                    "bv*[height=2160][fps>=?60]+ba/bv*[height=2160]+ba/b[height=2160]/" +
+                            "bv*[height<=2160][fps>=?60]+ba";
+            case "1080p" -> "bv*[height=1080][fps>=?60]+ba/bv*[height=1080]+ba/b[height=1080]/" +
+                    "bv*[height<=1080][fps>=?60]+ba";
+            case "720p" -> "bv*[height=720][fps>=?60]+ba/bv*[height=720]+ba/b[height=720]/" +
+                    "bv*[height<=720][fps>=?60]+ba";
+            default -> "best";
+        };
     }
 
     private void convertFiles(String srcDir, String ext, String destDir) {
